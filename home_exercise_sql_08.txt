@@ -1,0 +1,434 @@
+# Exercise 1
+# 1
+CREATE or replace function greet_user(_username TEXT)
+returns TEXT
+language plpgsql AS
+    $$
+
+		DECLARE
+    		greeting TEXT;
+
+        BEGIN
+            greeting := CONCAT('hello', _username, ' ! ', current_timestamp);
+
+		RETURN greeting;
+        end;
+    $$;
+
+SELECT greet_user('Roy');
+
+# 2
+CREATE or replace function account_operations(_x double precision, _y double precision,
+	OUT addition double precision,
+	OUT subtraction double precision,
+    OUT multiplication double precision,
+    OUT division double precision)
+language plpgsql AS
+    $$
+        BEGIN
+			addition = _x + _y;
+			subtraction = _x - _y;
+            multiplication = _x * _y;
+            division = _x / _y;
+        end;
+    $$;
+
+select * from account_operations(8, 2);
+
+# 3
+CREATE or replace function sp_get_max(_x integer, _y integer)
+returns integer
+language plpgsql AS
+    $$
+        BEGIN
+            if _x > _y then
+                return _y;
+            else
+                return _x;
+            end if;
+        end;
+    $$;
+
+select * from sp_get_max(4, 2);
+
+# 4
+CREATE or replace function sp_get_max3(_x integer, _y integer, _z integer)
+returns integer
+language plpgsql AS
+    $$
+        BEGIN
+            if _x < _y and _x < _z then
+                return _x;
+            elseif _y < _z then
+                return _y;
+            else
+                return _z;
+            end if;
+        end;
+    $$;
+
+select * from sp_get_max3(10, 5, 2);
+
+# 5
+CREATE or replace function sp_get_random(_max integer, _min integer)
+returns integer
+language plpgsql AS
+    $$
+        BEGIN
+            return floor(random() * (_max - _min + 1)) + _min;
+        end;
+    $$;
+
+select * from sp_get_random(10, 3);
+
+# 6
+CREATE or replace function sp_books_statistics(out cheapest_price DOUBLE precision,
+out most_expensive_price DOUBLE precision,
+out average_price DOUBLE precision,
+out book_count DOUBLE precision)
+language plpgsql AS
+    $$
+        BEGIN
+
+ 			select min(price), max(price), avg(price), count(*)
+            into cheapest_price, most_expensive_price, average_price, book_count
+            from books;
+
+        end;
+
+select * from sp_books_statistics();
+
+# 7
+CREATE or replace function sp_get_author_wrote_most_books()
+returns TABLE(name text, books_counter bigint)
+language plpgsql AS
+    $$
+        BEGIN
+            return QUERY
+            SELECT a.name, b.cnt_books AS max_wroten_books
+			FROM (
+    				SELECT author_id, COUNT(*) AS cnt_books
+    				FROM books
+    				GROUP BY author_id
+    				ORDER BY cnt_books DESC
+    				LIMIT 1
+				 ) b
+			JOIN authors a ON a.id = b.author_id;
+        end;
+    $$;
+
+select * from sp_get_author_wrote_most_books();
+
+ # 8
+CREATE or replace function sp_get_cheapest_book(out book_title text,
+out book_price DOUBLE precision)
+language plpgsql AS
+    $$
+        BEGIN
+ 			select title, price
+            into book_title, book_price
+            from books
+			where price = (select min(price) from books);
+        end;
+    $$;
+
+select * from sp_get_cheapest_book();
+
+# 9
+CREATE or replace function sp_count_tables_rows(out count_books_and_authors DOUBLE precision)
+language plpgsql AS
+    $$
+        DECLARE
+            count_books bigint := 0;
+            count_authors bigint := 0;
+        BEGIN
+            -- select into count_movies
+            select count(*)
+			into count_books
+            from books;
+
+            select count(*)
+			into count_authors
+            from authors;
+
+            count_books_and_authors = (count_books + count_authors) / 2;
+        END;
+    $$;
+
+select * from sp_count_tables_rows();
+
+# 10
+CREATE or replace function sp_insert_book(_title text, _release_date DATE,
+    _price double precision, _author_id bigint)
+    returns bigint
+language plpgsql AS
+    $$
+        DECLARE
+            new_id bigint := 0;
+        BEGIN
+            INSERT INTO books(title, release_date, price, author_id)
+            values (_title, _release_date, _price, _author_id)
+            returning id into new_id;
+
+            return new_id;
+        end;
+    $$;
+
+select * from sp_insert_book('The American Claimant', '1892-06-10', 60.1, 10);
+
+# 11
+CREATE or replace function sp_insert_authors(_name text)
+    returns bigint
+language plpgsql AS
+    $$
+        DECLARE
+            new_id bigint := 0;
+        BEGIN
+            INSERT INTO authors(name)
+            values (_name)
+            returning id into new_id;
+
+            return new_id;
+        end;
+    $$;
+
+select * from sp_insert_authors('William Shakespeare');
+
+# 12
+CREATE or replace function sp_average_books_for_author(out avg_author_books numeric(5, 2))
+language plpgsql AS
+    $$
+        DECLARE
+            count_books bigint := 0;
+            count_authors bigint := 0;
+        BEGIN
+
+            select count(*)
+			into count_books
+            from books;
+
+            select count(*)
+			into count_authors
+            from authors;
+
+            avg_author_books := (count_books::numeric / count_authors)::numeric(5, 2);
+        END;
+    $$;
+
+select * from sp_average_books_for_author();
+
+# 13
+CREATE or replace procedure sp_update_book(_title text, _release_date DATE,
+    _price double precision, _author_id bigint, _update_id bigint)
+language plpgsql AS
+    $$
+        BEGIN
+            UPDATE books
+            set title = _title, release_date = _release_date,
+                price = _price, author_id = _author_id
+            where id = _update_id;
+        end;
+    $$;
+
+call sp_update_book('The American Claimant'::text,'1892-08-10'::date, 70.1::double precision, 10::bigint, 27::bigint);
+
+To activate a procedure we should use the keyword call
+
+# 14
+CREATE or replace procedure sp_update_author(_name text, _update_id bigint)
+language plpgsql AS
+    $$
+        BEGIN
+            UPDATE authors
+            set name = _name
+            where id = _update_id;
+        end;
+    $$;
+
+call sp_update_author('John Grisham', 11);
+
+To activate a procedure we should use the keyword call
+
+# 15
+create or replace function sp_get_books_in_range(_price1 double precision, _price2 double precision)
+returns TABLE(book_title text, book_price double precision)
+language plpgsql as
+    $$
+        begin
+			 IF _price1 > _price2 THEN
+             	 RETURN QUERY
+                 SELECT title, price
+                 FROM books
+                 WHERE price BETWEEN _price2 AND _price1;
+             ELSE
+                 RETURN QUERY
+                 SELECT title, price
+                 FROM books
+                 WHERE price BETWEEN _price1 AND _price2;
+             END IF;
+        end;
+    $$;
+
+
+select * from sp_get_books_in_range(90, 60);
+
+# 16
+CREATE or replace function sp_get_specific_books(_author1 TEXT, _author2 TEXT)
+returns TABLE(id_number bigint, book_title text)
+language plpgsql AS
+    $$
+        BEGIN
+            return QUERY
+            WITH author1_books AS
+                (
+                    select b.title
+					from books b
+					join authors a on a.id = b.author_id
+                    where a.name = _author1
+                ),
+            author2_books AS
+                (
+                    select b.title
+					from books b
+					join authors a on a.id = b.author_id
+                    where a.name = _author2
+                )
+            select author_id, title
+            from books
+            where title not in (select * from author1_books)
+              and title not in (select * from author2_books);
+        end;
+    $$;
+
+select * from sp_get_specific_books('J.K. Rowling', 'George R.R. Martin');
+
+# 17
+CREATE or replace function sp_upsert_book(_title text, _release_date DATE,
+    _price double precision, _author_id bigint)
+    returns bigint
+language plpgsql AS
+    $$
+        DECLARE
+            record_id bigint := 0;
+        BEGIN
+            SELECT id
+            into record_id
+            from books
+            where title = _title;
+
+			IF FOUND THEN
+       			IF (SELECT author_id FROM books WHERE id = record_id) != _author_id THEN
+            		RAISE EXCEPTION 'Author ID % does not match the book ID %', _author_id, record_id;
+       		END IF;
+
+                update books
+                set release_date = _release_date, price = _price
+                where id = record_id;
+
+            ELSE
+                INSERT INTO books(title, release_date, price, author_id)
+                values (_title, _release_date, _price, _author_id)
+                returning id into record_id;
+            END IF;
+            return record_id;
+        end;
+    $$;
+
+-- update
+select * from sp_upsert_book('The Two Towers', '1954-12-11', 66.99, 3);
+
+-- insert
+select * from sp_upsert_book('The Caves of Steel', '1954-02-04', 50.87, 8);
+
+-- raise error
+select * from sp_upsert_book('The Caves of Steel', '1954-02-04', 50.87, 7);
+
+# 18
+CREATE or replace function sp_get_books_description(_char text)
+returns TABLE(id bigint, title text, name_or_release_date Text)
+language plpgsql AS
+    $$
+        BEGIN
+            return QUERY
+            select b.id, b.title, case when _char = 'D' then cast(b.release_date as TEXT)
+                                  else a.name end
+            from books b
+			join authors a on a.id = b.author_id;
+        end;
+    $$;
+
+-- name
+select * from sp_get_books_description('D');
+
+-- release_date
+select * from sp_get_books_description('Hello');
+
+# 19
+CREATE or replace function sp_get_book_price(_book_name text, _give_discount boolean, _discount_percentage NUMERIC)
+RETURNS NUMERIC
+language plpgsql AS
+    $$
+		DECLARE
+	    original_price NUMERIC;
+	    final_price NUMERIC;
+
+		BEGIN
+
+		    SELECT price
+			INTO original_price
+		    FROM books
+			WHERE title = _book_name;
+
+		    IF NOT FOUND THEN
+		        RAISE EXCEPTION 'Book not found: %', _book_name;
+		    END IF;
+
+		    IF _give_discount THEN
+		        final_price := original_price * (1 - _discount_percentage / 100);
+		        RETURN final_price;
+		    ELSE
+		        IF _discount_percentage != 0 THEN
+		            RAISE EXCEPTION 'Discount percentage must be 0 when give discount is false.';
+		        ELSE
+		            RETURN original_price;
+		        END IF;
+		    END IF;
+		END;
+    $$;
+
+
+  -- original price
+ select * from sp_get_book_price('A Clash of Kings', FALSE, 0);
+
+ -- new price
+ select * from sp_get_book_price('A Clash of Kings', TRUE, 50);
+
+ -- raise error no discount should be given
+ select * from sp_get_book_price('A Clash of Kings', FALSE, 50);
+
+ -- raise error book doesn't exist
+ select * from sp_get_book_price('Clash', FALSE, 0);
+
+ # 20
+CREATE or replace function sp_get_book_index(_book_name TEXT)
+returns bigint
+language plpgsql AS
+    $$
+        declare
+            book_index bigint := 0;
+        BEGIN
+            for i in 1..(select max(id) from books)
+                loop
+                    if (select count(*) from books where id = i) > 0 and (select title from books where id = i) = _book_name then
+                        book_index := (select id from books where id = i);
+                    end if;
+                end loop;
+            return book_index;
+        end;
+    $$;
+
+ -- valid book
+select * from sp_get_book_index('Norwegian Wood');
+
+ -- invalid book
+select * from sp_get_book_index('Harry');
