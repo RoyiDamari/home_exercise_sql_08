@@ -4,14 +4,12 @@ CREATE or replace function greet_user(_username TEXT)
 returns TEXT
 language plpgsql AS
     $$
-
-		DECLARE
-    		greeting TEXT;
+        DECLARE
+    	    greeting TEXT;
 
         BEGIN
             greeting := CONCAT('hello', _username, ' ! ', current_timestamp);
-
-		RETURN greeting;
+            RETURN greeting;
         end;
     $$;
 
