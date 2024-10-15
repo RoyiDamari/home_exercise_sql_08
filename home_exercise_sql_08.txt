@@ -19,15 +19,15 @@ SELECT greet_user('Roy');
 
 # 2
 CREATE or replace function account_operations(_x double precision, _y double precision,
-	OUT addition double precision,
-	OUT subtraction double precision,
+    OUT addition double precision,
+    OUT subtraction double precision,
     OUT multiplication double precision,
     OUT division double precision)
 language plpgsql AS
     $$
         BEGIN
-			addition = _x + _y;
-			subtraction = _x - _y;
+	    addition = _x + _y;
+	    subtraction = _x - _y;
             multiplication = _x * _y;
             division = _x / _y;
         end;
@@ -90,7 +90,7 @@ language plpgsql AS
     $$
         BEGIN
 
- 			select min(price), max(price), avg(price), count(*)
+ 	    select min(price), max(price), avg(price), count(*)
             into cheapest_price, most_expensive_price, average_price, book_count
             from books;
 
@@ -125,10 +125,10 @@ out book_price DOUBLE precision)
 language plpgsql AS
     $$
         BEGIN
- 			select title, price
+ 	    select title, price
             into book_title, book_price
             from books
-			where price = (select min(price) from books);
+	    where price = (select min(price) from books);
         end;
     $$;
 
@@ -142,13 +142,12 @@ language plpgsql AS
             count_books bigint := 0;
             count_authors bigint := 0;
         BEGIN
-            -- select into count_movies
             select count(*)
-			into count_books
+	    into count_books
             from books;
 
             select count(*)
-			into count_authors
+	    into count_authors
             from authors;
 
             count_books_and_authors = (count_books + count_authors) / 2;
@@ -255,7 +254,7 @@ returns TABLE(book_title text, book_price double precision)
 language plpgsql as
     $$
         begin
-			 IF _price1 > _price2 THEN
+	     IF _price1 > _price2 THEN
              	 RETURN QUERY
                  SELECT title, price
                  FROM books
@@ -282,15 +281,15 @@ language plpgsql AS
             WITH author1_books AS
                 (
                     select b.title
-					from books b
-					join authors a on a.id = b.author_id
+		    from books b
+		    join authors a on a.id = b.author_id
                     where a.name = _author1
                 ),
             author2_books AS
                 (
                     select b.title
-					from books b
-					join authors a on a.id = b.author_id
+		    from books b
+		    join authors a on a.id = b.author_id
                     where a.name = _author2
                 )
             select author_id, title
@@ -316,10 +315,10 @@ language plpgsql AS
             from books
             where title = _title;
 
-			IF FOUND THEN
-       			IF (SELECT author_id FROM books WHERE id = record_id) != _author_id THEN
-            		RAISE EXCEPTION 'Author ID % does not match the book ID %', _author_id, record_id;
-       		END IF;
+	    IF FOUND THEN
+       	         IF (SELECT author_id FROM books WHERE id = record_id) != _author_id THEN
+            	      RAISE EXCEPTION 'Author ID % does not match the book ID %', _author_id, record_id;
+       	    END IF;
 
                 update books
                 set release_date = _release_date, price = _price
@@ -350,10 +349,9 @@ language plpgsql AS
     $$
         BEGIN
             return QUERY
-            select b.id, b.title, case when _char = 'D' then cast(b.release_date as TEXT)
-                                  else a.name end
+            select b.id, b.title, case when _char = 'D' then cast(b.release_date as TEXT) else a.name end
             from books b
-			join authors a on a.id = b.author_id;
+	    join authors a on a.id = b.author_id;
         end;
     $$;
 
@@ -368,46 +366,45 @@ CREATE or replace function sp_get_book_price(_book_name text, _give_discount boo
 RETURNS NUMERIC
 language plpgsql AS
     $$
-		DECLARE
-	    original_price NUMERIC;
-	    final_price NUMERIC;
+	DECLARE
+	   original_price NUMERIC;
+	   final_price NUMERIC;
 
-		BEGIN
+	BEGIN
+           SELECT price
+	   INTO original_price
+	   FROM books
+	   WHERE title = _book_name;
 
-		    SELECT price
-			INTO original_price
-		    FROM books
-			WHERE title = _book_name;
+	   IF NOT FOUND THEN
+		RAISE EXCEPTION 'Book not found: %', _book_name;
+	   END IF;
 
-		    IF NOT FOUND THEN
-		        RAISE EXCEPTION 'Book not found: %', _book_name;
-		    END IF;
-
-		    IF _give_discount THEN
-		        final_price := original_price * (1 - _discount_percentage / 100);
-		        RETURN final_price;
-		    ELSE
-		        IF _discount_percentage != 0 THEN
-		            RAISE EXCEPTION 'Discount percentage must be 0 when give discount is false.';
-		        ELSE
-		            RETURN original_price;
-		        END IF;
-		    END IF;
-		END;
+	   IF _give_discount THEN
+		final_price := original_price * (1 - _discount_percentage / 100);
+		RETURN final_price;
+	   ELSE
+		IF _discount_percentage != 0 THEN
+		     RAISE EXCEPTION 'Discount percentage must be 0 when give discount is false.';
+		ELSE
+		     RETURN original_price;
+		END IF;
+	   END IF;
+	END;
     $$;
 
 
-  -- original price
- select * from sp_get_book_price('A Clash of Kings', FALSE, 0);
+-- original price
+select * from sp_get_book_price('A Clash of Kings', FALSE, 0);
 
- -- new price
- select * from sp_get_book_price('A Clash of Kings', TRUE, 50);
+-- new price
+select * from sp_get_book_price('A Clash of Kings', TRUE, 50);
 
- -- raise error no discount should be given
- select * from sp_get_book_price('A Clash of Kings', FALSE, 50);
+-- raise error no discount should be given
+select * from sp_get_book_price('A Clash of Kings', FALSE, 50);
 
- -- raise error book doesn't exist
- select * from sp_get_book_price('Clash', FALSE, 0);
+-- raise error book doesn't exist
+select * from sp_get_book_price('Clash', FALSE, 0);
 
  # 20
 CREATE or replace function sp_get_book_index(_book_name TEXT)
