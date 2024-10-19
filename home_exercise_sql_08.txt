@@ -201,11 +201,11 @@ language plpgsql AS
         BEGIN
 
             select count(*)
-			into count_books
+	    into count_books
             from books;
 
             select count(*)
-			into count_authors
+	    into count_authors
             from authors;
 
             avg_author_books := (count_books::numeric / count_authors)::numeric(5, 2);
